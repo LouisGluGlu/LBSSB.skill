@@ -38,16 +38,6 @@ def root(manifest: Any) -> Dict[str, Any]:
     return manifest if isinstance(manifest, dict) else {}
 
 
-def mdj_from_manifest(manifest: Dict[str, Any], manifest_path: Path) -> str:
-    value = manifest.get("mdj") or manifest.get("mdjFile") or manifest.get("nativeMdj") or ""
-    if not value:
-        return ""
-    p = Path(str(value))
-    if p.is_absolute():
-        return str(p)
-    return str((manifest_path.parent / p).resolve())
-
-
 def check_mdj(path: Path, native_required: bool) -> Tuple[List[str], List[str]]:
     errors: List[str] = []
     warnings: List[str] = []
@@ -63,6 +53,15 @@ def check_mdj(path: Path, native_required: bool) -> Tuple[List[str], List[str]]:
     elif native_required and not head.startswith(b"{"):
         errors.append(".mdj first non-whitespace byte is not JSON object start")
     return errors, warnings
+
+
+def resolve_relative(value: str, manifest_root: Dict[str, Any], project_root: Path, manifest_path: Path) -> Path:
+    path = Path(value)
+    if path.is_absolute():
+        return path
+    path_base = str(manifest_root.get("pathBase") or "project-root")
+    base = project_root if path_base == "project-root" else manifest_path.parent
+    return (base / path).resolve()
 
 
 def main() -> int:
@@ -113,7 +112,7 @@ def main() -> int:
     errors.extend(manifest_report.get("errors", []))
     warnings.extend(manifest_report.get("warnings", []))
 
-    preflight = {}
+    preflight: Dict[str, Any] = {}
     if preflight_path.exists():
         try:
             preflight = read_json(preflight_path)
@@ -122,22 +121,29 @@ def main() -> int:
     else:
         errors.append(f"preflight report missing: {preflight_path}")
 
-    capability = str(manifest_root.get("capabilityLevel") or preflight.get("capabilityLevel") or "")
-    preflight_status = str(manifest_root.get("preflightStatus") or preflight.get("status") or "")
+    capability = str(preflight.get("capabilityLevel") or manifest_root.get("capabilityLevel") or "")
+    preflight_status = str(preflight.get("status") or manifest_root.get("preflightStatus") or "")
     fallback_used = bool(manifest_root.get("fallbackUsed", False))
     native_verified = bool(manifest_root.get("nativeMdjVerified", False))
     backend = str(manifest_root.get("backend") or manifest_root.get("deliveryBackend") or "").lower()
     status_claim = str(manifest_root.get("status") or manifest_root.get("finalStatus") or "")
 
-    mdj_value = args.mdj or mdj_from_manifest(manifest_root, manifest_path)
+    manifest_capability = manifest_root.get("capabilityLevel")
+    preflight_capability = preflight.get("capabilityLevel")
+    if manifest_capability and preflight_capability and str(manifest_capability) != str(preflight_capability):
+        errors.append("manifest capabilityLevel contradicts preflight report")
+    manifest_preflight_status = manifest_root.get("preflightStatus")
+    preflight_status_value = preflight.get("status")
+    if manifest_preflight_status and preflight_status_value and str(manifest_preflight_status) != str(preflight_status_value):
+        errors.append("manifest preflightStatus contradicts preflight report")
+
+    mdj_value = args.mdj or (manifest_root.get("mdj") or manifest_root.get("mdjFile") or manifest_root.get("nativeMdj") or "")
     native_required = not fallback_used and "plantuml" not in backend and "fallback" not in backend
     if native_required or mdj_value:
         if not mdj_value:
             errors.append("native .mdj required but no .mdj path was provided")
         else:
-            mdj_path = Path(mdj_value)
-            if not mdj_path.is_absolute():
-                mdj_path = (project_root / mdj_path).resolve()
+            mdj_path = resolve_relative(str(mdj_value), manifest_root, project_root, manifest_path)
             mdj_errors, mdj_warnings = check_mdj(mdj_path, native_required)
             errors.extend(mdj_errors)
             warnings.extend(mdj_warnings)
@@ -169,6 +175,7 @@ def main() -> int:
         "nativeMdjVerified": native_verified,
         "fallbackUsed": fallback_used,
         "backend": backend,
+        "pathBase": manifest_root.get("pathBase") or "project-root",
         "errors": errors,
         "warnings": warnings,
         "manifestReport": manifest_report,

@@ -3,7 +3,10 @@ param(
   [string]$ConfigPath = "",
   [int]$WaitSeconds = 6,
   [switch]$EnableLogging,
-  [string]$OutFile = ""
+  [string]$OutFile = "",
+  [switch]$RequirePorts,
+  [switch]$RequireApi,
+  [switch]$RequireExtension
 )
 
 $ErrorActionPreference = "Stop"
@@ -156,8 +159,15 @@ $result = [ordered]@{
   nodeOptionsClearedForLaunch = $nodeCleared
   processStarted = $processStarted
   launchError = $launchError
+  apiServerPort = $apiPort
+  extensionPort = $extensionPort
+  apiServerReachable = $apiOk
+  extensionReachable = $extensionOk
   apiServer58321 = $apiOk
   extension58322 = $extensionOk
+  requirePorts = [bool]$RequirePorts
+  requireApi = [bool]$RequireApi
+  requireExtension = [bool]$RequireExtension
   status = $status
 }
 
@@ -171,5 +181,9 @@ if ($OutFile) {
 }
 $json
 
-if (-not $resolved.path -or -not $processStarted) { exit 1 }
+if (-not $resolved.path) { exit 2 }
+if (-not $processStarted) { exit 1 }
+if ($RequirePorts -and -not ($apiOk -and $extensionOk)) { exit 1 }
+if ($RequireApi -and -not $apiOk) { exit 1 }
+if ($RequireExtension -and -not $extensionOk) { exit 1 }
 exit 0

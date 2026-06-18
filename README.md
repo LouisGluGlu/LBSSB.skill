@@ -19,10 +19,12 @@
 - `tools/lbssb/`：低 token 脚本缓存，仅在导出不可读、批量验证、复刻或用户要求时生成。
 - `lbssb-staruml/tools/`：Skill 自带诊断与验收工具，例如 StarUML 启动、preflight、manifest 校验、交付验收。
 - `diagram-manifest.json`：记录每张 PNG 来源和一致性。
+- `diagram-plan.json` / `layout-plan.json`：复杂项目中的语义与布局计划。
 
 ## When To Use
 
 - 根据 `.mdj`、指导书、截图、用例图或需求生成 UML。
+- 接受一个项目目录作为输入，读取源 `.mdj`、指导书、`.lbssb` 和已有脚本后继续工作。
 - 修复 StarUML 图的语义、布局或导出问题。
 - 导出清晰 PNG 并保留可编辑 `.mdj`。
 - 让新会话继续同一个 UML 项目。
@@ -297,9 +299,23 @@ QualityGate 失败时不得声称完成。
 2. 调用 Skill 并输入确认语。
 3. 让 Skill 完成包完整性、MCP、编码和路径检查。
 4. 让 Skill 创建或读取 `.lbssb/`。
-5. 先读取图清单和业务对象。
-6. 生成 DiagramPlan。
-7. 用 MCP 修改工作副本。
-8. 导出 PNG。
-9. 必要时用 `draw_from_plan.py` 兜底。
-10. 运行 QualityGate 并更新 `.lbssb/next-action.md`。
+5. 先读取图清单、业务对象和已有类/属性/操作。
+6. 生成 DiagramPlan 和 LayoutPlan。
+7. 先绘制或修复一张高风险图，导出 PNG 并复核。
+8. 复核通过后再批量生成或修复剩余图。
+9. 用 MCP 对原生 `.mdj` 做局部移动、缩放、改线，不用全局 auto-layout 充当最终修复。
+10. 导出 PNG，运行工程验收和视觉验收，并更新 `.lbssb/next-action.md`。
+
+## Verified Means More Than Exported
+
+`Verified` 不再只表示 `.mdj` 能打开、PNG 能导出。Native StarUML 交付需要同时通过：
+
+- Engineering verification：StarUML/MCP 能打开、写入、保存、导出。
+- Visual verification：PNG 不截字、不压线、不乱线，布局层次通过 `visual-quality-gates.md`。
+- Source preservation：存在源 `.mdj` 时，已有英文类名、属性、方法和类型不会被静默覆盖。
+
+如果工程链路通过但图像质量差，状态必须是：
+
+```text
+Unverified: diagram quality gate failed
+```

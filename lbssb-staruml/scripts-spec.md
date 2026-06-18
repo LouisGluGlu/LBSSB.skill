@@ -6,6 +6,8 @@ Scripts are Skill-generated or Skill-reused low-token tools. They are not user p
 
 Scripts must not fake native StarUML success. If a script writes `.puml`, PNG, docs, or any non-StarUML artifact, the manifest and final summary must identify the backend honestly.
 
+Scripts must also not fake diagram quality. If a script can create/export diagrams but does not inspect or repair exported PNGs, it can only produce `engineeringStatus: Verified`, not final diagram `visualStatus: Verified`.
+
 ## Script Generation Conditions
 
 Generate or update `tools/lbssb/` only when at least one condition is true:
@@ -29,6 +31,8 @@ Scripts are internal Skill tool caches, not prerequisites the user must understa
 | `normalize_png_background.py` | Convert unreadable dark/transparent export to white background | PNG dir | normalized PNG | thresholds, root dir |
 | `verify_deliverables.py` | Check `.mdj`, PNGs, manifest, image dimensions | output dir, expected plan | report JSON/text | expected counts, min size |
 | `inspect_class_associations.mjs` | Inspect class relations, multiplicities, and crossings hints | project or diagram ID | console/JSON report | diagram name/ID |
+| `build_diagram_plan.py` or `.mjs` | Convert requirements and source inventory into diagram/layout plan | guide text, source inventory | `diagram-plan.json`, `layout-plan.json` | project name, output dir |
+| `visual_quality_check.py` | Record page/image-level visual review results | exported PNG dir, expected diagrams | visual review JSON | min sizes, manual notes |
 | `tools/start_project_staruml.ps1` | Resolve and start project/system StarUML safely | project root, optional runtime config | JSON startup result | ports, wait seconds |
 | `tools/check_staruml_preflight.py` | Hard preflight and capability level report | project root, optional evidence | `.lbssb/preflight-report.json` | evidence file, MCP tools JSON |
 | `tools/check_staruml_preflight.ps1` | Windows wrapper for Python preflight | same as Python script | `.lbssb/preflight-report.json` | Python executable |
@@ -93,6 +97,27 @@ Allowed use:
 - calling verified StarUML MCP/API endpoints that create/save real StarUML objects.
 
 If such a script still writes a `.mdj`, mark the delivery `Failed: invalid native StarUML authoring path`.
+
+## Forbidden Layout Script Patterns
+
+Reject or mark `visualStatus: Unverified` when a native generation script:
+
+- creates all diagrams before exporting and reviewing a pilot diagram;
+- calls global `layout_diagram` after semantic grouping and does not perform local repair;
+- uses simple row/column placement for complex use case diagrams without module zones;
+- rebuilds class members from hard-coded Chinese data when a source `.mdj` has existing English identifiers;
+- imports Mermaid sequence/state diagrams and accepts them as final without native visual repair;
+- exports PNGs but records no visual review evidence.
+
+Allowed pattern:
+
+1. Read source inventory.
+2. Write `diagram-plan.json`.
+3. Write `layout-plan.json`.
+4. Generate or repair one pilot/high-risk diagram.
+5. Export and inspect.
+6. Apply local move/resize/edge repair.
+7. Continue batch generation only after the layout pattern passes.
 
 ## Static Scan Gate
 
@@ -175,6 +200,22 @@ Minimum structure:
 }
 ```
 
+For native StarUML work, also include:
+
+```json
+{
+  "sourcePreservation": {
+    "preserveExistingIdentifiers": true,
+    "sourceInventory": ""
+  },
+  "layout": {
+    "strategy": "zone-based",
+    "pilotDiagram": "",
+    "allowGlobalAutoLayoutAsFinal": false
+  }
+}
+```
+
 Sequence diagrams should use `participants` and `messages`. Communication diagrams should use `objects` and `messages`. Activity diagrams should use `nodes`, `edges`, and optional `lanes`.
 
 ## layout-theme.json
@@ -202,7 +243,9 @@ Every PNG record must include:
   "type": "",
   "source": "staruml-export | draw_from_plan | normalized | plantuml-fallback",
   "mdjDiagram": "",
-  "consistency": "native | semantic-consistent | unverified"
+  "consistency": "native | semantic-consistent | unverified",
+  "engineeringStatus": "Verified | Unverified: <reason> | Failed: <reason>",
+  "visualStatus": "Verified | Unverified: <reason> | Failed: <reason>"
 }
 ```
 

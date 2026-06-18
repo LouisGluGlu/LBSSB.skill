@@ -4,6 +4,12 @@
 
 - 
 
+## Split Status
+
+- engineeringStatus:
+- visualStatus:
+- sourcePreservationStatus:
+
 ## Produced Files
 
 - 
@@ -13,6 +19,10 @@
 - 
 
 ## Risks
+
+- 
+
+## Visual Repair Backlog
 
 - 
 

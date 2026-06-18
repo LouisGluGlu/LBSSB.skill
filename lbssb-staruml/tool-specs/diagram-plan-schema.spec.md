@@ -8,7 +8,14 @@
     "name": "string",
     "sourceMdj": "string",
     "workingMdj": "string",
-    "outputDir": "string"
+    "outputDir": "string",
+    "sourceInventory": "string",
+    "preserveExistingIdentifiers": true
+  },
+  "layout": {
+    "strategy": "zone-based | lane-based | manual-native-repair",
+    "pilotDiagram": "string",
+    "allowGlobalAutoLayoutAsFinal": false
   },
   "diagrams": []
 }
@@ -24,7 +31,10 @@
   "filename": "string",
   "businessGoal": "string",
   "source": "string",
-  "layout": {}
+  "layout": {},
+  "visualStatus": "Verified | Unverified: <reason> | Failed: <reason>",
+  "engineeringStatus": "Verified | Unverified: <reason> | Failed: <reason>",
+  "sourcePreservationStatus": "Verified | Unverified: <reason> | Failed: <reason>"
 }
 ```
 

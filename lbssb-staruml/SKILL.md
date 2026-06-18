@@ -15,6 +15,8 @@ description: StarUML 高可用 UML 交付 Skill。用于根据 .mdj、指导书�
 
 Do not think while drawing. Build project site and DiagramPlan first, then execute. Do not default to environment repair. Do not produce long reports unless asked. Do not directly edit the source `.mdj`. Do not present a redrawn PNG as proof that native `.mdj` diagrams are optimized.
 
+Do not confuse execution success with diagram quality. A project that opens, saves, and exports can still be visually unacceptable. Final `Verified` requires engineering verification and visual diagram verification.
+
 ## Delivery Fail-Fast Contract
 
 - A StarUML `.mdj` delivery can be `Verified` only after StarUML and MCP preflight passes.
@@ -23,7 +25,23 @@ Do not think while drawing. Build project site and DiagramPlan first, then execu
 - If StarUML/MCP preflight fails, stop native `.mdj` work and route only to PlantUML fallback or read-only analysis.
 - PlantUML fallback outputs must be labeled as `.puml`, PNG, and documentation. They are not editable StarUML projects.
 - Native `.mdj` generation must use StarUML MCP/API to create real Model, Diagram, View, and Relationship objects. Do not directly assemble or patch `.mdj` JSON as a substitute for StarUML authoring.
+- When a source `.mdj` or existing project is provided, preserve existing model vocabulary before creating replacements. Do not discard English class names, attributes, operations, or types unless the user explicitly requests translation or rebuild.
 - All exceptions are fail-fast. Do not silently downgrade and then report "delivery complete".
+
+## Project Acceptance Contract
+
+When the user gives a project directory, source `.mdj`, screenshots, or guide documents, accept them as project inputs and build a project site before drawing.
+
+Required intake:
+
+1. Identify project root and output target.
+2. Copy or create a working `.mdj`; do not edit the source `.mdj` directly.
+3. Read existing diagrams and model vocabulary.
+4. Record preserved source terms in `.lbssb/business-logic.md` or manifest.
+5. Build `DiagramPlan` plus `LayoutPlan`.
+6. Draw a pilot or highest-risk diagram, export PNG, visually inspect, then continue.
+
+If source model data cannot be read, mark `Source Preservation Unverified` and do not claim preserved class/attribute names.
 
 ## Skill Package Integrity
 
@@ -35,6 +53,10 @@ Before executing any route, verify these package files exist:
 - `class-diagram-rules.md`
 - `diagram-patterns.md`
 - `quality-gates.md`
+- `visual-quality-gates.md`
+- `source-preservation.md`
+- `layout-playbooks.md`
+- `native-repair-workflow.md`
 - `scripts-spec.md`
 - `token-control.md`
 - `encoding-policy.md`
@@ -84,6 +106,10 @@ Single-diagram tasks must not enter the full training-project flow. Full project
 - Class diagram work: read `class-diagram-rules.md`.
 - Other diagram semantics: read `diagram-patterns.md`.
 - Acceptance checks: read `quality-gates.md`.
+- Visual quality checks: read `visual-quality-gates.md`.
+- Source project preservation: read `source-preservation.md`.
+- Human-like layout strategy: read `layout-playbooks.md`.
+- Native post-export repair loop: read `native-repair-workflow.md`.
 - Script generation/reuse: read `scripts-spec.md`.
 - Known bad delivery patterns and forbidden claims: read `failure-patterns.md`.
 - Final deliverable verification: use `tools/verify_deliverables.py` and `tools/validate_manifest.py`.
@@ -104,11 +130,21 @@ If `.lbssb/` exists, read these first:
 
 ## Delivery Tracks
 
-A. StarUML `.mdj` track: project opens, diagrams exist, diagrams remain editable.
+A. StarUML `.mdj` track: project opens, diagrams exist, diagrams remain editable. This is engineering verification only.
 
-B. PNG delivery track: white background, dark lines, readable text, no clipped key elements.
+B. PNG delivery track: white background, dark lines, readable text, no clipped key elements, and diagram-specific visual gates pass.
 
-C. Manifest track: each PNG records whether it came from `staruml-export`, `draw_from_plan`, or `normalized`, and whether consistency is `native`, `semantic-consistent`, or `unverified`.
+C. Manifest track: each PNG records whether it came from `staruml-export`, `draw_from_plan`, or `normalized`, whether consistency is `native`, `semantic-consistent`, or `unverified`, and visual status for the native exported diagram.
+
+## Verification Split
+
+Use these internal statuses:
+
+- `engineeringStatus`: StarUML/MCP open, write, save, export, manifest verification.
+- `visualStatus`: exported diagram PNG passes `visual-quality-gates.md`.
+- `sourcePreservationStatus`: existing source model vocabulary was read and preserved where required.
+
+Final `Verified` for native StarUML delivery requires all applicable statuses to be `Verified`.
 
 ## Final Status
 
@@ -134,7 +170,8 @@ Status matrix:
 
 | Condition | Final status |
 |---|---|
-| StarUML preflight passed, native `.mdj` opens, diagrams verified, PNG export verified, manifest consistent | `Verified` |
+| StarUML preflight passed, native `.mdj` opens, diagrams export, manifest consistent, visual gates pass, source preservation passes when applicable | `Verified` |
+| StarUML preflight and export pass but one or more diagrams have poor layout, clipped labels, lost source vocabulary, or unreviewed Mermaid imports | `Unverified: diagram quality gate failed` |
 | StarUML/MCP unavailable, only PlantUML `.puml`/PNG/docs produced | `Unverified: StarUML native delivery unavailable; provided PlantUML fallback` |
 | A `.mdj` was generated by direct JSON stitching, ZIP packaging, or any non-StarUML writer | `Failed: invalid native StarUML authoring path` |
 | PNG count/size passes but native `.mdj` was not opened/exported by StarUML | `Unverified: image fallback verified only; native StarUML delivery unverified` |
